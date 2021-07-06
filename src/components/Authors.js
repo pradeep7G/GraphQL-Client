@@ -1,17 +1,20 @@
-import React, { useState,useEffect } from 'react'
-import {useMutation, useQuery} from '@apollo/client'
-import {ALL_AUTHORS, EDIT_BORN} from '../queries'
+import React, { useState,useEffect} from 'react'
+import {rewriteURIForGET, useMutation, useQuery,useSubscription} from '@apollo/client'
+import {ALL_AUTHORS, EDIT_BORN,BOOK_ADDED} from '../queries'
 import Select from 'react-select'
 
 const SetBirthYear = ({changeBirthYear}) => {
   const [born,setBorn] = useState('')
   const [selectedOption,setSelectedOption] = useState(null)
-  const allAuthors = useQuery(ALL_AUTHORS).data.allAuthors.map(author => {
-    const option = {value:author,label:author.name}
-    return option
-  })
-
-  const options = allAuthors
+  const authors = useQuery(ALL_AUTHORS)
+  let options;
+  if(authors.data)
+  {
+     options=authors.data.allAuthors.map(author => {
+      const option = {value:author,label:author.name}
+      return option
+    })
+  }
 
   const submit = (event) => {
     event.preventDefault()
@@ -48,10 +51,26 @@ const Authors = (props) => {
     console.log(error.message)
   }})
 
+  const [authors,setAuthors] = useState(null)
+  
   const [changeBirthYear,returnedResult] = useMutation(EDIT_BORN,{
     onError:(error) => console.log('error: ',error.message)
   })
   
+  useEffect(() => {
+    if(result.data)
+    {
+      setAuthors(result.data.allAuthors)
+    }
+  },[result.data])
+
+  useSubscription(BOOK_ADDED,{
+    onSubscriptionData: ({subscriptionData}) => {
+      
+      window.alert(`added new book ${subscriptionData}`)
+    }
+  })
+
   if(!props.show)
   {
     return null
@@ -60,7 +79,8 @@ const Authors = (props) => {
   {
     return <div>loading....</div>
   }
-  const authors = result.data.allAuthors
+  if(authors)
+  {
   return (
   <div>
     <div>
@@ -86,12 +106,16 @@ const Authors = (props) => {
         </tbody>
       </table>
     </div>
+   { props.token &&
     <div>
        <h2>Set birthyear</h2>
        <SetBirthYear changeBirthYear={changeBirthYear}/>
     </div>
+   }
 </div>
   )
+}
+return null
 }
 
 export default Authors
